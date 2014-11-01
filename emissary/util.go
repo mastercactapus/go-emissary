@@ -2,14 +2,9 @@ package main
 
 import (
 	"fmt"
-	"path"
 )
 
-func UnitNameFromKey(keyName string) string {
-	return path.Base(keyName[:len(keyName)-1])
-}
-
-func ConfirmYN(prompt string, format ...interface{}) bool {
+func confirmYN(prompt string, format ...interface{}) bool {
 	yes := []string{"y", "Y", "yes", "Yes", "YES"}
 	no := []string{"n", "N", "no", "No", "NO"}
 
@@ -36,7 +31,14 @@ func containsString(strs []string, str string) bool {
 	return false
 }
 
-func KeyExists(keyName string) bool {
+func keyExists(keyName string) bool {
 	_, _, err := consul.KV().Get(keyName, nil)
 	return err == nil
+}
+
+func isPath(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	return s[0] == '.' || s[0] == '/'
 }

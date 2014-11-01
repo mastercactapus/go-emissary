@@ -10,7 +10,7 @@ import (
 var (
 	verbose             = kingpin.Flag("verbose", "Output extra information.").Default("false").Short('v').Bool()
 	force               = kingpin.Flag("force", "Don't confirm for unsafe actions.").Default("false").Short('f').Bool()
-	noblock             = kingpin.Flag("no-block", "Don't wait for actions to be completed.").Default("false").Bool()
+	noblock             = kingpin.Flag("no-block", "Don't wait for actions to be completed remotely.").Default("false").Bool()
 	submit              = kingpin.Command("submit", "Submit/update one or more unit files.")
 	submitUnits         = submit.Arg("unit-file", "One or more unit files to submit.").Required().Strings()
 	listUnitFiles       = kingpin.Command("list-unit-files", "List all submitted unit files.")
@@ -23,6 +23,8 @@ var (
 
 var consul *consulapi.Client
 
+var store *UnitStore
+
 func main() {
 	conf := consulapi.DefaultConfig()
 	c, err := consulapi.NewClient(conf)
@@ -30,17 +32,17 @@ func main() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	consul = c
+	store = NewUnitStore(c)
 
 	switch kingpin.Parse() {
 	case "submit":
-		SubmitUnitsCommand(*submitUnits)
+		submitUnitsCommand(*submitUnits)
 	case "list-unit-files":
-		ListUnitFilesCommand(*listUnitFilesFilter)
+		listUnitFilesCommand(*listUnitFilesFilter)
 	case "load":
-		LoadUnitsCommand(*loadUnits)
+		loadUnitsCommand(*loadUnits)
 	case "unload":
-		UnloadUnitsCommand(*unloadUnits)
+		unloadUnitsCommand(*unloadUnits)
 	}
 
 }

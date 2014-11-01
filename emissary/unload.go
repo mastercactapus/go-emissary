@@ -1,5 +1,5 @@
 package main
 
-func UnloadUnitsCommand(units []string) {
+func unloadUnitsCommand(units []string) {
 
 }

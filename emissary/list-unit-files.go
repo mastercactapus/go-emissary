@@ -5,16 +5,14 @@ import (
 	"os"
 )
 
-func ListUnitFilesCommand(filter string) {
-	list, _, err := consul.KV().Keys("emissary/unit-files/", "/", nil)
-
+func listUnitFilesCommand(filter string) {
+	list, err := store.List(filter)
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
 		os.Exit(2)
 	}
 
 	for _, v := range list {
-		name := UnitNameFromKey(v)
-		fmt.Println(name)
+		fmt.Println(v)
 	}
 }
