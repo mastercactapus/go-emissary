@@ -13,6 +13,7 @@ var (
 	force                = kingpin.Flag("force", "Don't confirm for unsafe actions.").Default("false").Short('f').Bool()
 	noblock              = kingpin.Flag("no-block", "Don't wait for actions to be completed remotely.").Default("false").Bool()
 	dc                   = kingpin.Flag("datacenter", "Limit actions to a particular datacenter").Default("").Short('d').String()
+	machine              = kingpin.Flag("machine", "Perform operations on a specific machine. (start, stop, journal, etc..)").Short('M').String()
 	submit               = kingpin.Command("submit", "Submit/update one or more unit files.")
 	submitUnits          = submit.Arg("unit-file", "One or more unit files to submit.").Required().Strings()
 	listUnitFiles        = kingpin.Command("list-unit-files", "List all submitted unit files.")
