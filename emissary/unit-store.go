@@ -50,6 +50,9 @@ func (s *UnitStore) GetLatestVersion(unitName string) (unitVersion string, err e
 	if err != nil {
 		return
 	}
+	if val == nil {
+		return "", ErrUnitNotFound
+	}
 
 	return string(val.Value), nil
 }
@@ -57,6 +60,9 @@ func (s *UnitStore) Get(unitName, tag string) (unit *UnitFile, err error) {
 	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/"+tag, nil)
 	if err != nil {
 		return
+	}
+	if val == nil {
+		return nil, ErrUnitNotFound
 	}
 
 	unit, err = NewUnitFile(unitName, val.Value)

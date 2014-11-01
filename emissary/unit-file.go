@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+var ValidUnitTypes = []string{"service", "socket", "device", "mount",
+	"automount", "swap", "target", "path", "timer", "snapshot", "slice",
+	"scope"}
+
 // UnitFile represents a systemd unit
 type UnitFile struct {
 	Options []*sdunit.UnitOption

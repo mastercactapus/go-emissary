@@ -35,6 +35,13 @@ func LoadUnit(unitPath string) (unit *UnitFile, version string, err error) {
 	if isPath(unitPath) {
 		unit, err = SubmitUnitFromFile(unitPath)
 	}
+	if err != nil {
+		return
+	}
+	if !containsString(ValidUnitTypes, UnitTypeFromName(name)) {
+		name += "." + ValidUnitTypes[0]
+	}
+
 	unit, version, err = store.Find(name)
 	if err != nil {
 		return
