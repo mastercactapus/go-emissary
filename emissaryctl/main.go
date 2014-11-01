@@ -26,7 +26,7 @@ var (
 )
 
 var consul *consulapi.Client
-var store *emissaryapi.UnitStore
+var api *emissaryapi.ApiClient
 
 func main() {
 	parsed := kingpin.Parse()
@@ -37,7 +37,7 @@ func main() {
 		os.Exit(2)
 	}
 	consul = c
-	store = emissaryapi.NewUnitStore(c, *dc)
+	api = emissaryapi.NewClient(c, *dc)
 
 	switch parsed {
 	case "submit":

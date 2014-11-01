@@ -6,7 +6,7 @@ import (
 )
 
 func listUnitFilesCommand(patterns ...string) {
-	list, err := store.List(patterns...)
+	list, err := api.Store.List(patterns...)
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
 		os.Exit(2)

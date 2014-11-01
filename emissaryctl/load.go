@@ -34,7 +34,7 @@ func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err 
 		name += "." + emissaryapi.ValidUnitTypes[0]
 	}
 
-	unit, version, err = store.Find(name)
+	unit, version, err = api.Store.Find(name)
 	if err != nil {
 		return
 	}
