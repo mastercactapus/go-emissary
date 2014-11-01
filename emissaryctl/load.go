@@ -3,19 +3,10 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/mastercactapus/go-emissary/emissary-api"
 	"os"
 	"path"
 )
-
-type UnitTag struct {
-	UnitName    string
-	UnitVersion string
-}
-
-type ServiceEvent struct {
-	Action string //load, start, stop, restart, enable
-	Units  []UnitTag
-}
 
 var ErrAlreadyActive = errors.New("Unit is already active")
 var ErrLockFailed = errors.New("Failed to aquire lock")
@@ -30,7 +21,7 @@ func loadUnitsCommand(units []string) {
 	}
 }
 
-func LoadUnit(unitPath string) (unit *UnitFile, version string, err error) {
+func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err error) {
 	name := path.Base(unitPath)
 	if isPath(unitPath) {
 		unit, err = SubmitUnitFromFile(unitPath)
@@ -39,8 +30,8 @@ func LoadUnit(unitPath string) (unit *UnitFile, version string, err error) {
 		return
 	}
 
-	if !containsString(ValidUnitTypes, UnitTypeFromName(name)) {
-		name += "." + ValidUnitTypes[0]
+	if !containsString(emissaryapi.ValidUnitTypes, emissaryapi.UnitTypeFromName(name)) {
+		name += "." + emissaryapi.ValidUnitTypes[0]
 	}
 
 	unit, version, err = store.Find(name)

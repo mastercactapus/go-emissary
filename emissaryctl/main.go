@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/armon/consul-api"
+	"github.com/mastercactapus/go-emissary/emissary-api"
 	"gopkg.in/alecthomas/kingpin.v1"
 	"os"
 )
@@ -25,8 +26,7 @@ var (
 )
 
 var consul *consulapi.Client
-
-var store *UnitStore
+var store *emissaryapi.UnitStore
 
 func main() {
 	parsed := kingpin.Parse()
@@ -37,7 +37,7 @@ func main() {
 		os.Exit(2)
 	}
 	consul = c
-	store = NewUnitStore(c, *dc)
+	store = emissaryapi.NewUnitStore(c, *dc)
 
 	switch parsed {
 	case "submit":

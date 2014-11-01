@@ -1,4 +1,4 @@
-package main
+package emissaryapi
 
 import (
 	"bytes"

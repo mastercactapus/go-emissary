@@ -1,4 +1,4 @@
-package main
+package emissaryapi
 
 import (
 	"crypto/sha256"
@@ -68,15 +68,15 @@ func (s *UnitStore) Get(unitName, tag string) (unit *UnitFile, err error) {
 	unit, err = NewUnitFile(unitName, val.Value)
 	return
 }
-func (s *UnitStore) Set(unitName string, unit *UnitFile) error {
+func (s *UnitStore) SetLatest(unit *UnitFile) error {
 	data := unit.Serialize()
 	sum := sha256.Sum224(data)
 	hash := hex.EncodeToString(sum[:])
-	_, err := s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/" + hash, Value: data}, &consulapi.WriteOptions{Datacenter: s.dc})
+	_, err := s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/" + hash, Value: data}, &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
-	_, err = s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/latest", Value: []byte(hash)}, &consulapi.WriteOptions{Datacenter: s.dc})
+	_, err = s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/latest", Value: []byte(hash)}, &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (s *UnitStore) Exists(unitName string) (bool, error) {
 }
 
 func (s *UnitStore) List(patterns ...string) ([]string, error) {
-	list, _, err := consul.KV().Keys("emissary/unit-files/", "/", &consulapi.QueryOptions{Datacenter: s.dc})
+	list, _, err := s.kv.Keys("emissary/unit-files/", "/", &consulapi.QueryOptions{Datacenter: s.dc})
 
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
