@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-func listUnitFilesCommand(filter string) {
-	list, err := store.List(filter)
+func listUnitFilesCommand(patterns ...string) {
+	list, err := store.List(patterns...)
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
 		os.Exit(2)

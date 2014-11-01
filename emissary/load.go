@@ -38,6 +38,7 @@ func LoadUnit(unitPath string) (unit *UnitFile, version string, err error) {
 	if err != nil {
 		return
 	}
+
 	if !containsString(ValidUnitTypes, UnitTypeFromName(name)) {
 		name += "." + ValidUnitTypes[0]
 	}

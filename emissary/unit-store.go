@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/armon/consul-api"
@@ -15,6 +14,7 @@ import (
 
 type UnitStore struct {
 	kv *consulapi.KV
+	dc string //Datacenter
 }
 
 const PrefixUnitFiles = "emissary/unit-files/"
@@ -22,8 +22,8 @@ const PrefixUnitFiles = "emissary/unit-files/"
 var ErrInvalidUnitName = errors.New("Invalid unit name")
 var ErrUnitNotFound = errors.New("No unit exists in store by that name")
 
-func NewUnitStore(c *consulapi.Client) *UnitStore {
-	return &UnitStore{kv: c.KV()}
+func NewUnitStore(c *consulapi.Client, datacenter string) *UnitStore {
+	return &UnitStore{kv: c.KV(), dc: datacenter}
 }
 
 func (s *UnitStore) Find(unitName string) (unit *UnitFile, unitVersion string, err error) {
@@ -46,7 +46,7 @@ func (s *UnitStore) GetLatest(unitName string) (unit *UnitFile, unitVersion stri
 	return
 }
 func (s *UnitStore) GetLatestVersion(unitName string) (unitVersion string, err error) {
-	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", nil)
+	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", &consulapi.QueryOptions{Datacenter: s.dc})
 	if err != nil {
 		return
 	}
@@ -57,7 +57,7 @@ func (s *UnitStore) GetLatestVersion(unitName string) (unitVersion string, err e
 	return string(val.Value), nil
 }
 func (s *UnitStore) Get(unitName, tag string) (unit *UnitFile, err error) {
-	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/"+tag, nil)
+	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/"+tag, &consulapi.QueryOptions{Datacenter: s.dc})
 	if err != nil {
 		return
 	}
@@ -72,26 +72,26 @@ func (s *UnitStore) Set(unitName string, unit *UnitFile) error {
 	data := unit.Serialize()
 	sum := sha256.Sum224(data)
 	hash := hex.EncodeToString(sum[:])
-	_, err := s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/" + hash, Value: data}, nil)
+	_, err := s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/" + hash, Value: data}, &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
-	_, err = s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/latest", Value: []byte(hash)}, nil)
+	_, err = s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unitName + "/latest", Value: []byte(hash)}, &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
 	return nil
 }
 func (s *UnitStore) Exists(unitName string) (bool, error) {
-	_, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", nil)
+	_, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", &consulapi.QueryOptions{Datacenter: s.dc})
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (s *UnitStore) List(filter string) ([]string, error) {
-	list, _, err := consul.KV().Keys("emissary/unit-files/", "/", nil)
+func (s *UnitStore) List(patterns ...string) ([]string, error) {
+	list, _, err := consul.KV().Keys("emissary/unit-files/", "/", &consulapi.QueryOptions{Datacenter: s.dc})
 
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
@@ -100,7 +100,7 @@ func (s *UnitStore) List(filter string) ([]string, error) {
 	names := make([]string, 0, len(list))
 	for _, v := range list {
 		name := path.Base(v[:len(v)-1])
-		if m, _ := filepath.Match(filter, name); m {
+		if matchAny(patterns, name) {
 			names = append(names, name)
 		}
 	}
@@ -109,7 +109,7 @@ func (s *UnitStore) List(filter string) ([]string, error) {
 }
 
 func (s *UnitStore) Delete(unitName string) error {
-	_, err := s.kv.Delete(PrefixUnitFiles+unitName+"/latest", nil)
+	_, err := s.kv.Delete(PrefixUnitFiles+unitName+"/latest", &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (s *UnitStore) Delete(unitName string) error {
 }
 
 func (s *UnitStore) DeleteAll(unitName string) error {
-	_, err := s.kv.DeleteTree(PrefixUnitFiles+unitName, nil)
+	_, err := s.kv.DeleteTree(PrefixUnitFiles+unitName, &consulapi.WriteOptions{Datacenter: s.dc})
 	if err != nil {
 		return err
 	}
