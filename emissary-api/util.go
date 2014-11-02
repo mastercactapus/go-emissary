@@ -4,6 +4,15 @@ import (
 	"path/filepath"
 )
 
+func containsUnit(units []UnitFile, unitName string) bool {
+	for _, v := range units {
+		if v.Name == unitName {
+			return true
+		}
+	}
+	return false
+}
+
 func containsString(strs []string, str string) bool {
 	for _, v := range strs {
 		if v == str {

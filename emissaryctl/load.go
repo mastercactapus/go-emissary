@@ -12,6 +12,10 @@ var ErrAlreadyActive = errors.New("Unit is already active")
 var ErrLockFailed = errors.New("Failed to aquire lock")
 
 func loadUnitsCommand(units []string) {
+	if len(units) == 0 {
+		fmt.Println("You must specify at least one unit to load.")
+		os.Exit(2)
+	}
 	for _, v := range units {
 		_, _, err := LoadUnit(v)
 		if err != nil {
@@ -39,7 +43,10 @@ func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err 
 		return
 	}
 
-	fmt.Println(unit.Options[0])
+	err = api.ScheduleUnit(unit, version)
+	if err != nil {
+		return
+	}
 
 	return
 }

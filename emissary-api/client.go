@@ -8,7 +8,9 @@ type ApiClient struct {
 	Store  UnitStore
 	consul *consulapi.Client
 	dc     string
+	kv     consulapi.KV
 	q      consulapi.QueryOptions
+	w      consulapi.WriteOptions
 }
 
 func NewClient(c *consulapi.Client, datacenter string) *ApiClient {
@@ -17,5 +19,7 @@ func NewClient(c *consulapi.Client, datacenter string) *ApiClient {
 		dc:     datacenter,
 		Store:  *NewUnitStore(c, datacenter),
 		q:      consulapi.QueryOptions{Datacenter: datacenter},
+		w:      consulapi.WriteOptions{Datacenter: datacenter},
+		kv:     *c.KV(),
 	}
 }
