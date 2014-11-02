@@ -6,10 +6,10 @@ import (
 	"path"
 )
 
+const PrefixPendingUnits = "emissary/pending-units/"
 const PrefixScheduledUnits = "emissary/scheduled-units/"
 
-func (c *ApiClient) ScheduleUnit(unit *UnitFile, version string) error {
-	var key string
+func (c *ApiClient) ScheduleUnit(unit *UnitFile, version string, activate bool) error {
 	var e consulapi.UserEvent
 	e.Name = "emissary-schedule-unit"
 	data, err := json.Marshal(&unit.Eoptions)
@@ -18,14 +18,19 @@ func (c *ApiClient) ScheduleUnit(unit *UnitFile, version string) error {
 	}
 	e.Payload = data
 
-	if unit.Eoptions.Global {
-		key = PrefixScheduledUnits + "_global/" + unit.Name
+	prefix := PrefixPendingUnits + unit.Name + "/"
+	var state string
+	if activate {
+		state = "start"
 	} else {
-		e.NodeFilter = "core-01"
-		key = PrefixScheduledUnits + "core-01/" + unit.Name
+		state = "load"
 	}
 
-	_, err = c.kv.Put(&consulapi.KVPair{Key: key, Value: []byte(version)}, &c.w)
+	_, err = c.kv.Put(&consulapi.KVPair{Key: prefix + "version", Value: []byte(version)}, &c.w)
+	if err != nil {
+		return err
+	}
+	_, err = c.kv.Put(&consulapi.KVPair{Key: prefix + "activate", Value: []byte(state)}, &c.w)
 	if err != nil {
 		return err
 	}
@@ -57,7 +62,7 @@ func (c *ApiClient) LocalScheduledUnits() (units []UnitFile, err error) {
 	for _, v := range globals {
 		name := path.Base(v.Key[:len(v.Key)-1])
 		if !containsUnit(units, name) {
-			unit, err := c.Store.Get(name, string(v.Value))
+			unit, err := c.GetUnit(name, string(v.Value))
 			if err != nil {
 				return nil, err
 			}
@@ -67,7 +72,7 @@ func (c *ApiClient) LocalScheduledUnits() (units []UnitFile, err error) {
 	for _, v := range machine {
 		name := path.Base(v.Key[:len(v.Key)-1])
 		if !containsUnit(units, name) {
-			unit, err := c.Store.Get(name, string(v.Value))
+			unit, err := c.GetUnit(name, string(v.Value))
 			if err != nil {
 				return nil, err
 			}

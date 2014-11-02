@@ -26,27 +26,27 @@ func NewUnitStore(c *consulapi.Client, datacenter string) *UnitStore {
 	return &UnitStore{kv: c.KV(), dc: datacenter}
 }
 
-func (s *UnitStore) Find(unitName string) (unit *UnitFile, unitVersion string, err error) {
+func (c *ApiClient) FindUnit(unitName string) (unit *UnitFile, unitVersion string, err error) {
 
-	unit, unitVersion, err = s.GetLatest(unitName)
+	unit, unitVersion, err = c.GetLatestUnit(unitName)
 	if err != nil && strings.Contains(unitName, "@") {
 		unitName = UnitPrefixFromName(unitName) + "@" + UnitTypeFromName(unitName)
-		unit, unitVersion, err = s.GetLatest(unitName)
+		unit, unitVersion, err = c.GetLatestUnit(unitName)
 	}
 
 	return
 }
 
-func (s *UnitStore) GetLatest(unitName string) (unit *UnitFile, unitVersion string, err error) {
-	unitVersion, err = s.GetLatestVersion(unitName)
+func (c *ApiClient) GetLatestUnit(unitName string) (unit *UnitFile, unitVersion string, err error) {
+	unitVersion, err = c.GetLatestUnitVersion(unitName)
 	if err != nil {
 		return
 	}
-	unit, err = s.Get(unitName, unitVersion)
+	unit, err = c.GetUnit(unitName, unitVersion)
 	return
 }
-func (s *UnitStore) GetLatestVersion(unitName string) (unitVersion string, err error) {
-	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", &consulapi.QueryOptions{Datacenter: s.dc})
+func (c *ApiClient) GetLatestUnitVersion(unitName string) (unitVersion string, err error) {
+	val, _, err := c.kv.Get(PrefixUnitFiles+unitName+"/latest", &consulapi.QueryOptions{Datacenter: c.dc})
 	if err != nil {
 		return
 	}
@@ -56,8 +56,8 @@ func (s *UnitStore) GetLatestVersion(unitName string) (unitVersion string, err e
 
 	return string(val.Value), nil
 }
-func (s *UnitStore) Get(unitName, tag string) (unit *UnitFile, err error) {
-	val, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/"+tag, &consulapi.QueryOptions{Datacenter: s.dc})
+func (c *ApiClient) GetUnit(unitName, tag string) (unit *UnitFile, err error) {
+	val, _, err := c.kv.Get(PrefixUnitFiles+unitName+"/"+tag, &consulapi.QueryOptions{Datacenter: c.dc})
 	if err != nil {
 		return
 	}
@@ -68,30 +68,30 @@ func (s *UnitStore) Get(unitName, tag string) (unit *UnitFile, err error) {
 	unit, err = NewUnitFile(unitName, val.Value)
 	return
 }
-func (s *UnitStore) SetLatest(unit *UnitFile) error {
+func (c *ApiClient) SetLatestUnit(unit *UnitFile) error {
 	data := unit.Serialize()
 	sum := sha256.Sum224(data)
 	hash := hex.EncodeToString(sum[:])
-	_, err := s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/" + hash, Value: data}, &consulapi.WriteOptions{Datacenter: s.dc})
+	_, err := c.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/" + hash, Value: data}, &c.w)
 	if err != nil {
 		return err
 	}
-	_, err = s.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/latest", Value: []byte(hash)}, &consulapi.WriteOptions{Datacenter: s.dc})
+	_, err = c.kv.Put(&consulapi.KVPair{Key: PrefixUnitFiles + unit.Name + "/latest", Value: []byte(hash)}, &c.w)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-func (s *UnitStore) Exists(unitName string) (bool, error) {
-	_, _, err := s.kv.Get(PrefixUnitFiles+unitName+"/latest", &consulapi.QueryOptions{Datacenter: s.dc})
+func (c *ApiClient) UnitExists(unitName string) (bool, error) {
+	_, _, err := c.kv.Get(PrefixUnitFiles+unitName+"/latest", &c.q)
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-func (s *UnitStore) List(patterns ...string) ([]string, error) {
-	list, _, err := s.kv.Keys("emissary/unit-files/", "/", &consulapi.QueryOptions{Datacenter: s.dc})
+func (c *ApiClient) ListUnits(patterns ...string) ([]string, error) {
+	list, _, err := c.kv.Keys("emissary/unit-files/", "/", &c.q)
 
 	if err != nil {
 		fmt.Println("Failed to list units:", err)
@@ -108,16 +108,16 @@ func (s *UnitStore) List(patterns ...string) ([]string, error) {
 	return names, nil
 }
 
-func (s *UnitStore) Delete(unitName string) error {
-	_, err := s.kv.Delete(PrefixUnitFiles+unitName+"/latest", &consulapi.WriteOptions{Datacenter: s.dc})
+func (c *ApiClient) DeleteUnit(unitName string) error {
+	_, err := c.kv.Delete(PrefixUnitFiles+unitName+"/latest", &c.w)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *UnitStore) DeleteAll(unitName string) error {
-	_, err := s.kv.DeleteTree(PrefixUnitFiles+unitName, &consulapi.WriteOptions{Datacenter: s.dc})
+func (c *ApiClient) DestroyUnit(unitName string) error {
+	_, err := c.kv.DeleteTree(PrefixUnitFiles+unitName, &c.w)
 	if err != nil {
 		return err
 	}

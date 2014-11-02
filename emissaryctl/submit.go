@@ -25,7 +25,7 @@ func SubmitUnitFromFile(unitFilePath string) (unit *emissaryapi.UnitFile, err er
 	if err != nil {
 		return
 	}
-	exists, err := api.Store.Exists(unit.Name)
+	exists, err := api.UnitExists(unit.Name)
 	if err != nil {
 		return
 	}
@@ -33,7 +33,7 @@ func SubmitUnitFromFile(unitFilePath string) (unit *emissaryapi.UnitFile, err er
 		return nil, fmt.Errorf("Unit '%s' has already been submitted.", unit.Name)
 	}
 
-	err = api.Store.SetLatest(unit)
+	err = api.SetLatestUnit(unit)
 	if err != nil {
 		return
 	}

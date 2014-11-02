@@ -38,12 +38,12 @@ func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err 
 		name += "." + emissaryapi.ValidUnitTypes[0]
 	}
 
-	unit, version, err = api.Store.Find(name)
+	unit, version, err = api.FindUnit(name)
 	if err != nil {
 		return
 	}
 
-	err = api.ScheduleUnit(unit, version)
+	err = api.ScheduleUnit(unit, version, false)
 	if err != nil {
 		return
 	}

@@ -1,8 +1,13 @@
 package emissaryapi
 
 import (
+	"github.com/armon/consul-api"
 	"path/filepath"
 )
+
+type KeyPutter interface {
+	Put(*consulapi.KVPair, *consulapi.WriteOptions) (*consulapi.WriteMeta, error)
+}
 
 func containsUnit(units []UnitFile, unitName string) bool {
 	for _, v := range units {
