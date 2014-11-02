@@ -4,13 +4,8 @@ import (
 	"time"
 )
 
-type Event struct {
-	Name string
-	Data []byte
-}
-
-func (c *ApiClient) EventListener(name string, interval time.Duration) chan Event {
-	ch := make(chan Event)
+func (c *ApiClient) EventListener(name string, interval time.Duration) chan []byte {
+	ch := make(chan []byte)
 	go func() {
 		prevEvents := make(map[string]bool, 256)
 		for {
@@ -18,7 +13,7 @@ func (c *ApiClient) EventListener(name string, interval time.Duration) chan Even
 			if err == nil {
 				for _, v := range events {
 					if !prevEvents[v.ID] {
-						ch <- Event{v.Name, v.Payload}
+						ch <- v.Payload
 					}
 					prevEvents[v.ID] = true
 				}

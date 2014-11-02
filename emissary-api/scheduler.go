@@ -11,8 +11,8 @@ const PrefixScheduledUnits = "emissary/scheduled-units/"
 
 func (c *ApiClient) ScheduleUnit(unit *UnitFile, version string, activate bool) error {
 	var e consulapi.UserEvent
-	e.Name = "emissary-schedule-unit"
-	data, err := json.Marshal(&unit.Eoptions)
+	e.Name = "emissary:pending-unit"
+	data, err := json.Marshal(&unit)
 	if err != nil {
 		return err
 	}
