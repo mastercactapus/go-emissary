@@ -1,6 +1,9 @@
+#Emissary
 systemd integration for consul
 
-#Emissary Unit File Options
+Inspired by fleet, emissary is a tool to allow cluster management with systemd using consul.
+
+##Emissary Unit File Options
 
 ```systemd-unit
 
