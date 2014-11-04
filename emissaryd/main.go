@@ -9,9 +9,13 @@ import (
 	"github.com/armon/consul-api"
 )
 
+//session-based lock on non _global to take deployment
+//
+
 var consul *consulapi.Client
 var bus *dbus.Conn
 var api *emissaryapi.ApiClient
+var sessionId string
 
 func AddService(name, note string, active bool) error {
 	status[name] = &ServiceStatus{name, note, active}
@@ -38,6 +42,11 @@ func main() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
+	sessionId, _, err = c.Session().CreateNoChecks(nil, nil)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
 
 	err = AddService("emissary", "Running", true)
 	if err != nil {
@@ -48,5 +57,6 @@ func main() {
 	statusUpdates := make(chan *ServiceStatus, 256)
 	go MonitorServiceLoop(statusUpdates)
 	go UpdateImmediateLoop(statusUpdates)
+	go ScheduleAllLoop()
 	UpdateAllLoop()
 }
