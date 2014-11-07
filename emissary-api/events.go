@@ -4,23 +4,46 @@ import (
 	"time"
 )
 
-func (c *ApiClient) EventListener(name string, interval time.Duration) chan []byte {
-	ch := make(chan []byte)
+type Event struct {
+	Name    string
+	Payload []byte
+}
+
+func (c *ApiClient) EventListener(eventName string, interval time.Duration) (events chan *Event, stop chan int) {
+	events = make(chan *Event, 256)
+	stop = make(chan int)
+	ticker := time.NewTicker(interval)
+
 	go func() {
-		prevEvents := make(map[string]bool, 256)
+		firedEvents := make(map[string]bool, 1024)
+		numEvents := 0
 		for {
-			events, _, err := c.consul.Event().List(name, &c.q)
-			if err == nil {
-				for _, v := range events {
-					if !prevEvents[v.ID] {
-						ch <- v.Payload
-					}
-					prevEvents[v.ID] = true
+			select {
+			case <-ticker.C:
+				e, _, err := c.consul.Event().List(eventName, &c.q)
+				if err != nil {
+					continue
 				}
+				var update map[string]bool
+				if numEvents < 1024 {
+					update = firedEvents
+				} else {
+					update = make(map[string]bool, 1024)
+				}
+				for _, v := range e {
+					if !firedEvents[v.Name] {
+						events <- &Event{v.Name, v.Payload}
+					}
+					update[v.Name] = true
+				}
+				firedEvents = update
+			case <-stop:
+				ticker.Stop()
+				close(events)
+				return
 			}
-			prevEvents = make(map[string]bool, 256)
-			time.Sleep(interval)
 		}
 	}()
-	return ch
+
+	return
 }

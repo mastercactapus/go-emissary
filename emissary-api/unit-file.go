@@ -6,6 +6,7 @@ import (
 	sdunit "github.com/coreos/go-systemd/unit"
 	"io/ioutil"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -24,12 +25,15 @@ type UnitFile struct {
 }
 
 type Eoptions struct {
-	Monitor     bool
-	Global      bool
-	Requires    []string
-	Machines    []string
-	Datacenters []string
-	Tags        []string
+	Monitor         bool
+	Global          bool
+	Requires        []string
+	Machines        []string
+	Conflicts       []string
+	Datacenters     []string
+	Tags            []string
+	MachineMetadata []string
+	Port            int
 }
 
 // UnitTypeFromName returns the type from a systemd unit name
@@ -83,12 +87,15 @@ func (u *UnitFile) Serialize() []byte {
 
 func NewEoptions() *Eoptions {
 	return &Eoptions{
-		Datacenters: make([]string, 0, 5),
-		Machines:    make([]string, 0, 5),
-		Requires:    make([]string, 0, 10),
-		Tags:        make([]string, 0, 30),
-		Monitor:     true,
-		Global:      false,
+		Datacenters:     make([]string, 0, 5),
+		Machines:        make([]string, 0, 5),
+		Requires:        make([]string, 0, 10),
+		Conflicts:       make([]string, 0, 10),
+		Tags:            make([]string, 0, 30),
+		MachineMetadata: make([]string, 0, 30),
+		Monitor:         true,
+		Global:          false,
+		Port:            0,
 	}
 }
 
@@ -99,6 +106,8 @@ func EoptionsFromUnitOptions(unitOptions []*sdunit.UnitOption) (e *Eoptions, err
 			continue
 		}
 		switch v.Name {
+		case "Conflicts":
+			e.Conflicts = append(e.Conflicts, v.Value)
 		case "Requires":
 			e.Requires = append(e.Requires, v.Value)
 		case "Machine":
@@ -117,6 +126,13 @@ func EoptionsFromUnitOptions(unitOptions []*sdunit.UnitOption) (e *Eoptions, err
 			if err != nil {
 				return nil, err
 			}
+		case "Port":
+			e.Port, err = strconv.Atoi(v.Value)
+			if err != nil {
+				return nil, err
+			}
+		case "MachineMetadata":
+			e.MachineMetadata = append(e.MachineMetadata, v.Value)
 		}
 	}
 
