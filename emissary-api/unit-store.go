@@ -12,19 +12,10 @@ import (
 	"github.com/armon/consul-api"
 )
 
-type UnitStore struct {
-	kv *consulapi.KV
-	dc string //Datacenter
-}
-
 const PrefixUnitFiles = "emissary/unit-files/"
 
 var ErrInvalidUnitName = errors.New("Invalid unit name")
 var ErrUnitNotFound = errors.New("No unit exists in store by that name")
-
-func NewUnitStore(c *consulapi.Client, datacenter string) *UnitStore {
-	return &UnitStore{kv: c.KV(), dc: datacenter}
-}
 
 func (c *ApiClient) FindUnit(unitName string) (unit *UnitFile, unitVersion string, err error) {
 
@@ -56,8 +47,8 @@ func (c *ApiClient) GetLatestUnitVersion(unitName string) (unitVersion string, e
 
 	return string(val.Value), nil
 }
-func (c *ApiClient) GetUnit(unitName, tag string) (unit *UnitFile, err error) {
-	val, _, err := c.kv.Get(PrefixUnitFiles+unitName+"/"+tag, &consulapi.QueryOptions{Datacenter: c.dc})
+func (c *ApiClient) GetUnit(unitName, version string) (unit *UnitFile, err error) {
+	val, _, err := c.kv.Get(PrefixUnitFiles+unitName+"/"+version, &consulapi.QueryOptions{Datacenter: c.dc})
 	if err != nil {
 		return
 	}

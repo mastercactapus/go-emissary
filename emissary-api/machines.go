@@ -72,7 +72,7 @@ func (m *Machine) FQDN() string {
 	return m.Name + ".node." + m.Datacenter + "." + m.Domain
 }
 
-func (c *ApiClient) ListMachines(datacenter, meta string) ([]Machine, error) {
+func (c *ApiClient) Machines(datacenter, meta string) ([]Machine, error) {
 	var opts consulapi.QueryOptions
 	opts.Datacenter = datacenter
 	self, err := c.Self()

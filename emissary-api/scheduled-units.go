@@ -61,9 +61,11 @@ func (c *ApiClient) UpdateScheduleTarget(name, targetState, targetVersion string
 	if err != nil {
 		return err
 	}
-	err = c.kvSet(topKey+"target-version", []byte(targetVersion))
-	if err != nil {
-		return err
+	if targetVersion != "" {
+		err = c.kvSet(topKey+"target-version", []byte(targetVersion))
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -74,10 +76,13 @@ func (c *ApiClient) UpdateScheduleCurrent(name, currentState, currentVersion str
 	if err != nil {
 		return err
 	}
-	err = c.kvSetSession(topKey+"current-version", []byte(currentVersion))
-	if err != nil {
-		return err
+	if currentVersion != "" {
+		err = c.kvSetSession(topKey+"current-version", []byte(currentVersion))
+		if err != nil {
+			return err
+		}
 	}
+	c.consul.Event().Fire(&consulapi.UserEvent{Name: "emissary:current-state:" + name, Payload: []byte(currentState), TagFilter: "emissary-client"}, &c.w)
 	return nil
 }
 
@@ -85,8 +90,17 @@ func (c *ApiClient) LockSchedule(name, machineId string) error {
 	if c.sess != "" {
 		return ErrNoSession
 	}
-	key := "emissary/scheduled-units/" + name + "/machine-id"
-	lock, _, err := c.kv.Acquire(&consulapi.KVPair{Key: key, Session: c.sess, Value: []byte(machineId)}, &c.w)
+	key := "emissary/schedule-lock"
+	lock, _, err := c.kv.Acquire(&consulapi.KVPair{Key: key, Session: c.sess}, &c.w)
+	if err != nil {
+		return err
+	}
+	if !lock {
+		return ErrNoLock
+	}
+	defer c.kv.Release(&consulapi.KVPair{Key: key, Session: c.sess}, &c.w)
+	key = "emissary/scheduled-units/" + name + "/machine-id"
+	lock, _, err = c.kv.Acquire(&consulapi.KVPair{Key: key, Session: c.sess, Value: []byte(machineId)}, &c.w)
 	if err != nil {
 		return err
 	}
