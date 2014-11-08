@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"github.com/coreos/go-systemd/dbus"
+	"os"
+	"path"
 	"time"
 )
 
@@ -10,61 +14,37 @@ type ServiceStatus struct {
 	Active bool
 }
 
+type ServiceState struct {
+	Name        string
+	Note        string
+	Description string
+	ActiveState string
+	LoadState   string
+	SubState    string
+}
+
 const ttl = 30 * time.Second
 const updateAllInterval = 10 * time.Second
 
-var status = make(map[string]*ServiceStatus, 100)
-
-func UpdateAllLoop() {
-	for {
-		for _, v := range status {
-			if v == nil {
-				continue
-			}
-			if v.Active {
-				api.ServicePass(v.Name, v.Note)
-			} else {
-				api.ServiceFail(v.Name, v.Note)
+func SystemdMonitorLoop(interval time.Duration) {
+	statCh, errCh := bus.SubscribeUnitsCustom(interval, 10, monitorUnitChanged, monitorUnitFilter)
+	go func() {
+		for {
+			select {
+			case stat := <-statCh:
+				fmt.Println(stat)
+			case err := <-errCh:
+				fmt.Println("DBus error:", err)
 			}
 		}
-		time.Sleep(updateAllInterval)
-	}
+	}()
 }
 
-func UpdateImmediateLoop(statusCh chan *ServiceStatus) {
-	for {
-		s := <-statusCh
-		if s.Active {
-			api.ServicePass(s.Name, s.Note)
-		} else {
-			api.ServiceFail(s.Name, s.Note)
-		}
-	}
+func monitorUnitFilter(name string) bool {
+	_, err := os.Stat(path.Join(*unitDir, name))
+	return err == nil
 }
 
-func MonitorServiceLoop(statusCh chan *ServiceStatus) {
-	statCh, _ := bus.SubscribeUnits(time.Millisecond * 250)
-	for {
-		for k, v := range <-statCh {
-			if status[k] == nil {
-				continue
-			}
-			changed := false
-			if v == nil {
-				changed = updateStatusCheck(k, "Missing", false)
-			} else {
-				changed = updateStatusCheck(k, v.ActiveState+"/"+v.SubState, v.ActiveState == "active")
-			}
-			if changed {
-				statusCh <- status[k]
-			}
-		}
-	}
-}
-
-func updateStatusCheck(name, note string, active bool) bool {
-	changed := status[name].Note != note
-	changed = changed || status[name].Active != active
-	status[name] = &ServiceStatus{name, note, active}
-	return changed
+func monitorUnitChanged(a *dbus.UnitStatus, b *dbus.UnitStatus) bool {
+	return a.ActiveState != b.ActiveState || a.LoadState != b.LoadState || a.SubState != b.SubState
 }

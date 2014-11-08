@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/coreos/go-systemd/dbus"
 	"github.com/mastercactapus/go-emissary/emissary-api"
+	"gopkg.in/alecthomas/kingpin.v1"
 	"os"
+	"time"
 
 	"github.com/armon/consul-api"
 )
@@ -16,19 +18,20 @@ var consul *consulapi.Client
 var bus *dbus.Conn
 var api *emissaryapi.ApiClient
 var sessionId string
+var self *emissaryapi.Machine
 
-func AddService(name, note string, active bool) error {
-	status[name] = &ServiceStatus{name, note, active}
-	return api.RegisterService(name, ttl)
-}
-func RmService(name string) error {
-	if status[name] != nil {
-		delete(status, name)
-	}
-	return api.DeregisterService(name)
-}
+var (
+	unitDir    = kingpin.Flag("unit-directory", "Directory to store scheduled unit files in.").Short('u').Default("/run/emissary/units").String()
+	datacenter = kingpin.Flag("datacenter", "Specify the datacenter to operate in.").Short('d').Default("dc1").String()
+)
 
 func main() {
+	kingpin.Parse()
+	err := os.MkdirAll(*unitDir, 0755)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
 	conf := consulapi.DefaultConfig()
 	c, err := consulapi.NewClient(conf)
 	if err != nil {
@@ -42,21 +45,17 @@ func main() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	sessionId, _, err = c.Session().CreateNoChecks(nil, nil)
+	err = api.RegisterSelf([]string{}, 30)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(2)
+	}
+	self, err = api.Self()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)
 	}
 
-	err = AddService("emissary", "Running", true)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(2)
-	}
-
-	statusUpdates := make(chan *ServiceStatus, 256)
-	go MonitorServiceLoop(statusUpdates)
-	go UpdateImmediateLoop(statusUpdates)
-	go ScheduleAllLoop()
-	UpdateAllLoop()
+	go SystemdMonitorLoop(1 * time.Second)
+	SyncUnitLoop(3 * time.Second)
 }
