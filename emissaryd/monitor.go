@@ -32,7 +32,21 @@ func SystemdMonitorLoop(interval time.Duration) {
 		for {
 			select {
 			case stat := <-statCh:
-				fmt.Println(stat)
+				for k, v := range stat {
+					if monitorUnitFilter(k) {
+						continue
+					}
+					var err error
+					if v == nil {
+						err = api.UpdateUnitStates(k, "loaded", "inactive", "dead")
+					} else {
+						err = api.UpdateUnitStates(k, v.LoadState, v.ActiveState, v.SubState)
+					}
+
+					if err != nil {
+						fmt.Println("Error updating service:", err)
+					}
+				}
 			case err := <-errCh:
 				fmt.Println("DBus error:", err)
 			}
@@ -42,7 +56,7 @@ func SystemdMonitorLoop(interval time.Duration) {
 
 func monitorUnitFilter(name string) bool {
 	_, err := os.Stat(path.Join(*unitDir, name))
-	return err == nil
+	return err != nil
 }
 
 func monitorUnitChanged(a *dbus.UnitStatus, b *dbus.UnitStatus) bool {

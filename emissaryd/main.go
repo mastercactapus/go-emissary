@@ -45,7 +45,7 @@ func main() {
 		fmt.Println(err)
 		os.Exit(2)
 	}
-	err = api.RegisterSelf([]string{}, 30)
+	err = api.RegisterSelf([]string{}, 5*time.Second)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(2)

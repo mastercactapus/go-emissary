@@ -42,6 +42,10 @@ func (c *ApiClient) GetLatestUnitVersion(unitName string) (unitVersion string, e
 		return
 	}
 	if val == nil {
+		template := UnitTemplateFromName(unitName)
+		if template != unitName {
+			return c.GetLatestUnitVersion(template)
+		}
 		return "", ErrUnitNotFound
 	}
 
@@ -53,6 +57,10 @@ func (c *ApiClient) GetUnit(unitName, version string) (unit *UnitFile, err error
 		return
 	}
 	if val == nil {
+		template := UnitTemplateFromName(unitName)
+		if template != unitName {
+			return c.GetUnit(template, version)
+		}
 		return nil, ErrUnitNotFound
 	}
 

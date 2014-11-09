@@ -14,6 +14,9 @@ type ScheduledUnit struct {
 	CurrentVersion string
 	MachineId      string
 	Activate       string
+	LoadState      string
+	ActiveState    string
+	SubState       string
 }
 type ScheduledUnits map[string]*ScheduledUnit
 
@@ -48,10 +51,31 @@ func (c *ApiClient) ScheduledUnits() (ScheduledUnits, error) {
 			units[name].CurrentState = string(v.Value)
 		case "current-version":
 			units[name].CurrentVersion = string(v.Value)
+		case "current-loadstate":
+			if v.Session == "" {
+				continue
+			}
+			units[name].LoadState = string(v.Value)
+		case "current-activestate":
+			units[name].ActiveState = string(v.Value)
+		case "current-substate":
+			units[name].SubState = string(v.Value)
 		case "machine-id":
 			units[name].MachineId = string(v.Value)
 		}
 	}
+	for k, v := range units {
+		if v.ActiveState == "" && v.CurrentState == "failed" {
+			units[k].ActiveState = "failed"
+			units[k].SubState = "failed"
+		}
+
+		if v.MachineId == "" {
+			units[k].ActiveState = "inactive"
+			units[k].SubState = "dead"
+		}
+	}
+
 	return units, nil
 }
 
@@ -86,12 +110,28 @@ func (c *ApiClient) UpdateScheduleCurrent(name, currentState, currentVersion str
 	return nil
 }
 
+func (c *ApiClient) UpdateUnitStates(name, load, active, sub string) error {
+	err := c.kvSetSession("emissary/scheduled-units/"+name+"/current-loadstate", []byte(load))
+	if err != nil {
+		return err
+	}
+	err = c.kvSetSession("emissary/scheduled-units/"+name+"/current-activestate", []byte(active))
+	if err != nil {
+		return err
+	}
+	err = c.kvSetSession("emissary/scheduled-units/"+name+"/current-substate", []byte(sub))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *ApiClient) LockSchedule(name, machineId string) error {
-	if c.sess != "" {
+	if c.sess == "" {
 		return ErrNoSession
 	}
 	key := "emissary/schedule-lock"
-	lock, _, err := c.kv.Acquire(&consulapi.KVPair{Key: key, Session: c.sess}, &c.w)
+	lock, _, err := c.kv.Acquire(&consulapi.KVPair{Key: key, Session: c.sess, Value: []byte(machineId)}, &c.w)
 	if err != nil {
 		return err
 	}

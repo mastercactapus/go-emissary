@@ -39,7 +39,7 @@ func (c *ApiClient) kvSet(key string, value []byte) error {
 	return err
 }
 func (c *ApiClient) kvSetSession(key string, value []byte) error {
-	if c.sess != "" {
+	if c.sess == "" {
 		return ErrNoSession
 	}
 	_, err := c.kv.Put(&consulapi.KVPair{Key: key, Value: value, Session: c.sess}, &c.w)

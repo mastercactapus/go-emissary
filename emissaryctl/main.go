@@ -18,8 +18,12 @@ var (
 	submitUnits          = submit.Arg("unit-file", "One or more unit files to submit.").Required().Strings()
 	listUnitFiles        = kingpin.Command("list-unit-files", "List all submitted unit files.")
 	listUnitFilesPattern = listUnitFiles.Arg("PATTERN...", "Pattern(s) to match against unit names.").Strings()
+	listUnits            = kingpin.Command("list-units", "List all scheduled units.")
+	listUnitsPattern     = listUnits.Arg("PATTERN...", "Pattern(s) to match against unit names.").Strings()
 	load                 = kingpin.Command("load", "Schedules units in the cluster.")
 	loadUnits            = load.Arg("units", "One or more units to schedule in the cluster.").Strings()
+	startCmd             = kingpin.Command("start", "Schedules units in the cluster.")
+	startUnits           = startCmd.Arg("units", "One or more units to schedule/start in the cluster.").Strings()
 	unload               = kingpin.Command("unload", "Unschedule units in the cluster.")
 	unloadUnits          = unload.Arg("units", "One or more units to unschedule in the cluster.").Strings()
 	listMachines         = kingpin.Command("list-machines", "List all known nodes.")
@@ -41,12 +45,16 @@ func main() {
 	api = emissaryapi.NewClient(c, *dc)
 
 	switch parsed {
+	case "list-units":
+		listUnitsCommand(*listUnitsPattern...)
 	case "submit":
 		submitUnitsCommand(*submitUnits)
 	case "list-unit-files":
 		listUnitFilesCommand(*listUnitFilesPattern...)
 	case "load":
-		loadUnitsCommand(*loadUnits)
+		loadUnitsCommand(*loadUnits, false)
+	case "start":
+		loadUnitsCommand(*startUnits, true)
 	case "unload":
 		unloadUnitsCommand(*unloadUnits)
 	case "list-machines":

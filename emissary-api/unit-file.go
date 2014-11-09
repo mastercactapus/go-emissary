@@ -70,6 +70,14 @@ func UnitInstanceFromName(name string) string {
 	return name[s+1 : e]
 }
 
+func UnitTemplateFromName(name string) string {
+	if strings.Contains(name, "@") {
+		return UnitPrefixFromName(name) + "@" + "." + UnitTypeFromName(name)
+	} else {
+		return name
+	}
+}
+
 func (u *UnitFile) Prefix() string {
 	return UnitPrefixFromName(u.Name)
 }

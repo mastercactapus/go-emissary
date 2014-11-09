@@ -9,6 +9,10 @@ Inspired by fleet, emissary is a tool to allow cluster management with systemd u
 
 [X-Emissary]
 
+# Ports to advertise for this service
+Port=8000
+Port=8001
+
 # Only deploy to a machine running redis.service
 # Not using definitions under [Unit] to separate
 # system deps from deploy deps
@@ -25,7 +29,7 @@ Machine=core-02
 # Locks this service to the given datacenter(s)
 Datacenter=dc1
 
-# Locks this service to machines with the given tag(s)
+# Add the given tags to this service
 Tag=external-address
 Tag=external-storage
 

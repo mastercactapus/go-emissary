@@ -15,20 +15,50 @@ type Machine struct {
 }
 
 var ErrNoSession = errors.New("Cannot perform action without a session. Call RegisterSelf first.")
+var ErrAlreadyRegistered = errors.New("Machine is already registered")
+var stopHeartbeat = make(chan bool)
 
 func (c *ApiClient) RegisterSelf(meta []string, ttl time.Duration) error {
-	id, _, err := c.consul.Session().CreateNoChecks(nil, &c.w)
-	if err != nil {
-		return err
+	if c.sess != "" {
+		return ErrAlreadyRegistered
 	}
-	c.sess = id
+	var se consulapi.SessionEntry
+	se.Checks = []string{"serfHealth", "service:emissary"}
 	var service = &consulapi.AgentServiceRegistration{
 		ID:    "emissary",
 		Name:  "emissary",
 		Tags:  meta,
 		Check: &consulapi.AgentServiceCheck{TTL: ttl.String()},
 	}
-	return c.consul.Agent().ServiceRegister(service)
+	err := c.consul.Agent().ServiceRegister(service)
+	if err != nil {
+		return err
+	}
+	err = c.consul.Agent().PassTTL("service:emissary", "")
+	if err != nil {
+		return err
+	}
+	se.Name = "emissary:emissaryd"
+	id, _, err := c.consul.Session().Create(&se, &c.w)
+	if err != nil {
+		return err
+	}
+	c.sess = id
+
+	go func() {
+		ticker := time.NewTicker(ttl / 2)
+		for {
+			select {
+			case <-ticker.C:
+				c.consul.Agent().PassTTL("service:emissary", "")
+			case <-stopHeartbeat:
+				ticker.Stop()
+				break
+			}
+		}
+	}()
+
+	return nil
 }
 func (c *ApiClient) UnregisterSelf() error {
 	if c.sess == "" {
@@ -39,6 +69,7 @@ func (c *ApiClient) UnregisterSelf() error {
 		return err
 	}
 	c.sess = ""
+	stopHeartbeat <- true
 	return c.consul.Agent().ServiceDeregister("emissary")
 }
 

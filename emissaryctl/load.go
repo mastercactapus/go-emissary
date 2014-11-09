@@ -11,13 +11,13 @@ import (
 var ErrAlreadyActive = errors.New("Unit is already active")
 var ErrLockFailed = errors.New("Failed to aquire lock")
 
-func loadUnitsCommand(units []string) {
+func loadUnitsCommand(units []string, start bool) {
 	if len(units) == 0 {
 		fmt.Println("You must specify at least one unit to load.")
 		os.Exit(2)
 	}
 	for _, v := range units {
-		_, _, err := LoadUnit(v)
+		_, _, err := LoadUnit(v, start)
 		if err != nil {
 			fmt.Printf("Failed to load %s: %s\n", v, err.Error())
 			os.Exit(2)
@@ -25,7 +25,7 @@ func loadUnitsCommand(units []string) {
 	}
 }
 
-func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err error) {
+func LoadUnit(unitPath string, start bool) (unit *emissaryapi.UnitFile, version string, err error) {
 	name := path.Base(unitPath)
 	if isPath(unitPath) {
 		unit, err = SubmitUnitFromFile(unitPath)
@@ -43,7 +43,14 @@ func LoadUnit(unitPath string) (unit *emissaryapi.UnitFile, version string, err 
 		return
 	}
 
-	err = api.ScheduleUnit(unit, version, false)
+	var active string
+	if start {
+		active = "active"
+	} else {
+		active = "inactive"
+	}
+
+	err = api.UpdateScheduleTarget(unit.Name, active, version)
 	if err != nil {
 		return
 	}

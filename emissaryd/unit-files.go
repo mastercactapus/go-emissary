@@ -21,15 +21,16 @@ func SyncUnits() {
 func SyncUnitLoop(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	doSync, _ := api.EventListener("emissary:schedule-unit", time.Millisecond*250)
+	_SyncUnits(true)
 	for {
 		var err error
 		select {
 		case <-doSync:
-			err = _SyncUnits()
+			err = _SyncUnits(false)
 		case <-ticker.C:
-			err = _SyncUnits()
+			err = _SyncUnits(false)
 		case <-syncUnitsCh:
-			err = _SyncUnits()
+			err = _SyncUnits(false)
 		}
 		if err != nil {
 			fmt.Println(err)
@@ -59,6 +60,9 @@ func ScheduleUnit(name string, units emissaryapi.ScheduledUnits) {
 			min = c
 		}
 	}
+	if min == -1 {
+		min = 0
+	}
 	if counts[name] == min {
 		scheduled := false
 		avail := 0
@@ -72,7 +76,7 @@ func ScheduleUnit(name string, units emissaryapi.ScheduledUnits) {
 					units[k] = v
 					scheduled = true
 				}
-			} else {
+			} else if v.MachineId == "" {
 				avail++
 			}
 		}
@@ -118,7 +122,7 @@ func CleanupUnits(units emissaryapi.ScheduledUnits) error {
 	return nil
 }
 
-func _SyncUnits() error {
+func _SyncUnits(firstRun bool) error {
 	units, err := api.ScheduledUnits()
 	if err != nil {
 		return err
@@ -135,7 +139,7 @@ func _SyncUnits() error {
 		}
 		filename := path.Join(*unitDir, v.Name)
 		_, err := os.Stat(filename)
-		if err == nil && v.CurrentVersion == v.TargetVersion {
+		if err == nil && (!firstRun || v.CurrentVersion == v.TargetVersion) {
 			continue
 		}
 		os.MkdirAll(*unitDir, 0755)
